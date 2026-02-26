@@ -1,4 +1,4 @@
-module github.com/mgrmtech/abdm-ecdh
+module github.com/eka-care/abdm-ecdh
 
 go 1.24.4
 
