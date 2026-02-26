@@ -21,4 +21,5 @@ Thumbs.db
 vendor/
 
 # Claude Code
-.claude/
+.claude/.idea/
+.idea/
