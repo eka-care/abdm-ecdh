@@ -21,6 +21,11 @@ type DecryptionResponse struct {
 
 // Decrypt decrypts data using ECDH + HKDF + AES-256-GCM.
 func Decrypt(req DecryptionRequest) (*DecryptionResponse, error) {
+	// Sanitize JSON unicode escapes from ABDM responses
+	req.EncryptedData = sanitizeBase64(req.EncryptedData)
+	req.SenderNonce = sanitizeBase64(req.SenderNonce)
+	req.RequesterNonce = sanitizeBase64(req.RequesterNonce)
+
 	// Derive IV and salt from XOR of nonces
 	iv, salt, err := deriveIVAndSalt(req.SenderNonce, req.RequesterNonce)
 	if err != nil {
