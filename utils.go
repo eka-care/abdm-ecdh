@@ -10,13 +10,26 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 
 	"golang.org/x/crypto/hkdf"
 )
 
+// sanitizeBase64 replaces JSON unicode escapes (\u002B → +, \u002F → /, \u003D → =)
+// that ABDM/Java systems embed in base64 strings.
+func sanitizeBase64(s string) string {
+	s = strings.ReplaceAll(s, `\u002B`, "+")
+	s = strings.ReplaceAll(s, `\u002F`, "/")
+	s = strings.ReplaceAll(s, `\u003D`, "=")
+	return s
+}
+
 // computeSharedSecret performs ECDH: shared_secret = privateKey * peerPublicKey.
 // Returns the base64-encoded X coordinate of the resulting point.
 func computeSharedSecret(base64PrivateKey, base64PublicKey string) (string, error) {
+	base64PrivateKey = sanitizeBase64(base64PrivateKey)
+	base64PublicKey = sanitizeBase64(base64PublicKey)
+
 	privBytes, err := base64.StdEncoding.DecodeString(base64PrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("decode private key: %w", err)
