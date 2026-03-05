@@ -56,6 +56,11 @@ func computeSharedSecret(base64PrivateKey, base64PublicKey string) (string, erro
 		}
 	}
 
+	// Validate that the peer's public key is on the curve (prevents invalid curve attacks)
+	if !isOnCurve(px, py) {
+		return "", errors.New("peer public key is not on the curve")
+	}
+
 	// ECDH: S = d * Q
 	sx, _ := scalarMult(d, px, py)
 	if sx == nil {
@@ -69,17 +74,30 @@ func computeSharedSecret(base64PrivateKey, base64PublicKey string) (string, erro
 	return base64.StdEncoding.EncodeToString(xBytes), nil
 }
 
-// xorBytes computes the XOR of two byte slices (result length = len(a)).
-func xorBytes(a, b []byte) []byte {
+// xorBytes computes the XOR of two equal-length byte slices.
+func xorBytes(a, b []byte) ([]byte, error) {
+	if len(a) == 0 || len(b) == 0 {
+		return nil, errors.New("xorBytes: input slices must not be empty")
+	}
+	if len(a) != len(b) {
+		return nil, fmt.Errorf("xorBytes: length mismatch (%d vs %d)", len(a), len(b))
+	}
 	result := make([]byte, len(a))
 	for i := range a {
-		result[i] = a[i] ^ b[i%len(b)]
+		result[i] = a[i] ^ b[i]
 	}
-	return result
+	return result, nil
 }
 
 // deriveIVAndSalt derives the 12-byte IV and 20-byte salt from XOR of nonces.
 func deriveIVAndSalt(senderNonce, requesterNonce string) (iv, salt []byte, err error) {
+	if senderNonce == "" {
+		return nil, nil, errors.New("sender nonce is empty")
+	}
+	if requesterNonce == "" {
+		return nil, nil, errors.New("requester nonce is empty")
+	}
+
 	senderNonceBytes, err := base64.StdEncoding.DecodeString(senderNonce)
 	if err != nil {
 		return nil, nil, fmt.Errorf("decode sender nonce: %w", err)
@@ -89,7 +107,13 @@ func deriveIVAndSalt(senderNonce, requesterNonce string) (iv, salt []byte, err e
 		return nil, nil, fmt.Errorf("decode requester nonce: %w", err)
 	}
 
-	xored := xorBytes(senderNonceBytes, requesterNonceBytes)
+	xored, err := xorBytes(senderNonceBytes, requesterNonceBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("XOR nonces: %w", err)
+	}
+	if len(xored) < 20 {
+		return nil, nil, fmt.Errorf("XORed nonce too short (%d bytes), need at least 20", len(xored))
+	}
 	iv = xored[len(xored)-12:]
 	salt = xored[:20]
 	return iv, salt, nil
