@@ -47,8 +47,11 @@ func pointAdd(x1, y1, x2, y2 *big.Int) (*big.Int, *big.Int) {
 	// lambda = (y2 - y1) / (x2 - x1) mod p
 	dy := new(big.Int).Sub(y2, y1)
 	dx := new(big.Int).Sub(x2, x1)
-	dx.ModInverse(dx, p)
-	lambda := new(big.Int).Mul(dy, dx)
+	dxInv := new(big.Int).ModInverse(dx, p)
+	if dxInv == nil {
+		return nil, nil
+	}
+	lambda := new(big.Int).Mul(dy, dxInv)
 	lambda.Mod(lambda, p)
 
 	// x3 = lambda^2 - x1 - x2 mod p
@@ -87,9 +90,12 @@ func pointDouble(x, y *big.Int) (*big.Int, *big.Int) {
 	num.Mod(num, p)
 
 	den := new(big.Int).Mul(big.NewInt(2), y)
-	den.ModInverse(den, p)
+	denInv := new(big.Int).ModInverse(den, p)
+	if denInv == nil {
+		return nil, nil
+	}
 
-	lambda := new(big.Int).Mul(num, den)
+	lambda := new(big.Int).Mul(num, denInv)
 	lambda.Mod(lambda, p)
 
 	// x3 = lambda^2 - 2*x mod p
