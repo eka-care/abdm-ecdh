@@ -17,7 +17,7 @@ Implements ECDH key agreement using Curve25519 (Weierstrass form) with AES-256-G
 go get github.com/eka-care/abdm-ecdh/go
 ```
 
-> **Note:** Module path changed from `github.com/eka-care/abdm-ecdh` (v1.x) to `github.com/eka-care/abdm-ecdh/go` (v2.0.0).
+> **Note:** Module path changed from `github.com/eka-care/abdm-ecdh` (tags `v1.x`) to `github.com/eka-care/abdm-ecdh/go` (tags `go/v2.x`).
 
 See [`go/`](./go/) for full API documentation.
 
@@ -30,14 +30,14 @@ pip install "git+https://github.com/eka-care/abdm-ecdh.git#subdirectory=python"
 To pin to a specific version:
 
 ```bash
-pip install "git+https://github.com/eka-care/abdm-ecdh.git@v2.0.0#subdirectory=python"
+pip install "git+https://github.com/eka-care/abdm-ecdh.git@python/v1.0.0#subdirectory=python"
 ```
 
 In `pyproject.toml`:
 
 ```toml
 dependencies = [
-    "abdm-ecdh @ git+https://github.com/eka-care/abdm-ecdh.git@v2.0.0#subdirectory=python"
+    "abdm-ecdh @ git+https://github.com/eka-care/abdm-ecdh.git@python/v1.0.0#subdirectory=python"
 ]
 ```
 
