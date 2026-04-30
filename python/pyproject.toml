@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "abdm-ecdh"
+version = "1.0.0"
+description = "ABDM ECDH encryption/decryption for secure health data exchange"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = [
+    "cryptography>=41.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/abdm_ecdh"]
