@@ -23,3 +23,5 @@ vendor/
 # Claude Code
 .claude/.idea/
 .idea/
+docs
+.claude
