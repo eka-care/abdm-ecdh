@@ -2,68 +2,33 @@
 
 ABDM (Ayushman Bharat Digital Mission) ECDH encryption/decryption for secure health data exchange.
 
-Implements ECDH key agreement using Curve25519 (Weierstrass form) with AES-256-GCM encryption, as required by the ABDM HIE-CM specification. Available for Go and Python.
+## What this does
+
+ABDM's HIE-CM specification requires a specific encryption scheme for exchanging health records between parties. This library implements that scheme.
+
+The overall pattern — ECDH key agreement → HKDF key derivation → AES-GCM encryption — is standard. Two things make it ABDM-specific:
+
+**1. Weierstrass Curve25519**
+ABDM's reference implementation is in Java using BouncyCastle, which represents Curve25519 in short Weierstrass form (`y² = x³ + Ax + B`) rather than the standard Montgomery form used by X25519. Standard crypto libraries don't expose this form, so the elliptic curve math is implemented directly.
+
+**2. Dual-nonce IV derivation**
+Both parties generate and exchange a random nonce. The sender and requester nonces are XOR'd together to produce the AES-GCM IV (last 12 bytes) and HKDF salt (first 20 bytes). This ensures both parties contribute entropy to the session.
+
+## Cryptographic details
+
+| Step | Algorithm |
+|---|---|
+| Key agreement | ECDH on Curve25519 (Weierstrass form) |
+| Key derivation | HKDF-SHA256 (salt = first 20 bytes of XOR'd nonces) |
+| Encryption | AES-256-GCM (IV = last 12 bytes of XOR'd nonces) |
+| Key encoding | X.509 SubjectPublicKeyInfo DER (BouncyCastle explicit params) |
 
 ## Packages
 
-| Language | Source | Import |
+| Language | Docs | Install |
 |---|---|---|
-| Go | [`go/`](./go/) | `github.com/eka-care/abdm-ecdh/go` |
-| Python | [`python/`](./python/) | `abdm-ecdh` via GitHub |
-
-## Go
-
-```bash
-go get github.com/eka-care/abdm-ecdh/go
-```
-
-> **Note:** Module path changed from `github.com/eka-care/abdm-ecdh` (tags `v1.x`) to `github.com/eka-care/abdm-ecdh/go` (tags `go/v2.x`).
-
-See [`go/`](./go/) for full API documentation.
-
-## Python
-
-```bash
-pip install "git+https://github.com/eka-care/abdm-ecdh.git#subdirectory=python"
-```
-
-To pin to a specific version:
-
-```bash
-pip install "git+https://github.com/eka-care/abdm-ecdh.git@python/v1.0.0#subdirectory=python"
-```
-
-In `pyproject.toml`:
-
-```toml
-dependencies = [
-    "abdm-ecdh @ git+https://github.com/eka-care/abdm-ecdh.git@python/v1.0.0#subdirectory=python"
-]
-```
-
-```python
-from abdm_ecdh import generate_key_material, encrypt, decrypt
-
-sender    = generate_key_material()
-requester = generate_key_material()
-
-enc = encrypt(
-    string_to_encrypt="sensitive health data",
-    sender_nonce=sender.nonce,
-    requester_nonce=requester.nonce,
-    sender_private_key=sender.private_key,
-    requester_public_key=requester.x509_public_key,
-)
-dec = decrypt(
-    encrypted_data=enc.encrypted_data,
-    sender_nonce=sender.nonce,
-    requester_nonce=requester.nonce,
-    requester_private_key=requester.private_key,
-    sender_public_key=sender.x509_public_key,
-)
-```
-
-See [`python/`](./python/) for full API documentation.
+| Go | [`go/`](./go/) | `go get github.com/eka-care/abdm-ecdh/go` |
+| Python | [`python/`](./python/) | `pip install abdm-ecdh` |
 
 ## License
 
