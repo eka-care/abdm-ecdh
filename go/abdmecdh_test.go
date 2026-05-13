@@ -17,7 +17,7 @@ const (
 
 	plaintext = ""
 
-	encryptedData = ""
+	encryptedData = "2H7IAUROe23J6JwM25F+SA=="
 )
 
 // TestDecryptWithKnownVector takes all pre-shared parameters (sender public key,

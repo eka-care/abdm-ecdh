@@ -1,5 +1,7 @@
 # abdm-ecdh — Java
 
+[![CI — Java](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-java.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-java.yml)
+
 ABDM ECDH encryption/decryption for Java.
 
 ## Install
@@ -19,7 +21,7 @@ Add the JitPack repository and dependency to your `pom.xml`:
 <dependency>
     <groupId>com.github.eka-care</groupId>
     <artifactId>abdm-ecdh</artifactId>
-    <version>java-v1.0.0</version>
+    <version>java/v1.0.0</version>
 </dependency>
 ```
 
@@ -31,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.eka-care:abdm-ecdh:java-v1.0.0'
+    implementation 'com.github.eka-care:abdm-ecdh:java/v1.0.0'
 }
 ```
 

@@ -1,0 +1,23 @@
+name: CI — Go
+
+on:
+  push:
+    branches: [main]
+    paths: ['go/**']
+  pull_request:
+    branches: [main]
+    paths: ['go/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache: true
+          cache-dependency-path: go/go.sum
+      - name: Test
+        working-directory: go
+        run: go test ./...

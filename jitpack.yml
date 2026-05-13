@@ -1,0 +1,4 @@
+build:
+  jdk: openjdk17
+  commands:
+    - cd java && mvn install -DskipTests
