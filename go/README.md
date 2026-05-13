@@ -1,5 +1,7 @@
 # abdm-ecdh/go
 
+[![CI — Go](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-go.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-go.yml)
+
 Go library implementing the ABDM (Ayushman Bharat Digital Mission) ECDH encryption protocol for secure health data exchange.
 
 ## Installation

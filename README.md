@@ -23,13 +23,19 @@ Both parties generate and exchange a random nonce. The sender and requester nonc
 | Encryption | AES-256-GCM (IV = last 12 bytes of XOR'd nonces) |
 | Key encoding | X.509 SubjectPublicKeyInfo DER (BouncyCastle explicit params) |
 
+## CI Status
+
+[![CI — Go](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-go.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-go.yml)
+[![CI — Python](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-python.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-python.yml)
+[![CI — Java](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-java.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-java.yml)
+
 ## Packages
 
 | Language | Docs | Install |
 |---|---|---|
-| Go | [`go/`](./go/) | `go get github.com/eka-care/abdm-ecdh/go` |
+| Go | [`go/`](./go/) | `go get github.com/eka-care/abdm-ecdh/go@v2.0.0` |
 | Python | [`python/`](./python/) | `pip install abdm-ecdh` |
-| Java | [`java/`](./java/) | `com.github.eka-care:abdm-ecdh:java-v1.0.0` (JitPack) |
+| Java | [`java/`](./java/) | `com.github.eka-care:abdm-ecdh:java/v1.0.0` (JitPack) |
 
 ## License
 

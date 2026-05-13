@@ -1,11 +1,13 @@
 # abdm-ecdh
 
+[![CI — Python](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-python.yml/badge.svg)](https://github.com/eka-care/abdm-ecdh/actions/workflows/ci-python.yml)
+
 Python library implementing the ABDM (Ayushman Bharat Digital Mission) ECDH encryption protocol for secure health data exchange.
 
 ## Installation
 
 ```bash
-pip install abdm-ecdh
+pip install abdm-ecdh==1.0.0
 ```
 
 ## Usage
