@@ -1,11 +1,9 @@
 name: Release — Python
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g. 1.1.0)'
-        required: true
+  push:
+    tags:
+      - 'python/v*'
 
 permissions:
   contents: write
@@ -22,9 +20,12 @@ jobs:
           cache-dependency-path: python/pyproject.toml
       - name: Install hatch
         run: pip install hatch
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/python/v}" >> $GITHUB_OUTPUT
       - name: Set version
         working-directory: python
-        run: sed -i "s/^version = .*/version = \"${{ inputs.version }}\"/" pyproject.toml
+        run: sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
       - name: Build
         working-directory: python
         run: hatch build
@@ -34,7 +35,6 @@ jobs:
           HATCH_INDEX_USER: __token__
           HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
         run: hatch publish
-      - name: Create and push tag
-        run: |
-          git tag python/v${{ inputs.version }}
-          git push origin python/v${{ inputs.version }}
+      - name: Delete tag on failure
+        if: failure()
+        run: git push origin --delete ${GITHUB_REF#refs/}

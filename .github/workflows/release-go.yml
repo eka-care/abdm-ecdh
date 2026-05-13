@@ -1,11 +1,9 @@
 name: Release — Go
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g. 2.1.0)'
-        required: true
+  push:
+    tags:
+      - 'go/v*'
 
 permissions:
   contents: write
@@ -23,7 +21,6 @@ jobs:
       - name: Test
         working-directory: go
         run: go test ./...
-      - name: Create and push tag
-        run: |
-          git tag go/v${{ inputs.version }}
-          git push origin go/v${{ inputs.version }}
+      - name: Delete tag on failure
+        if: failure()
+        run: git push origin --delete ${GITHUB_REF#refs/}
