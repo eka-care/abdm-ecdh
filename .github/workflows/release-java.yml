@@ -1,9 +1,14 @@
 name: Release — Java
 
 on:
-  push:
-    tags:
-      - 'java/v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.1.0)'
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -18,7 +23,12 @@ jobs:
       - name: Test
         working-directory: java
         run: mvn -B test
+      - name: Create and push tag
+        run: |
+          git tag java/v${{ inputs.version }}
+          git push origin java/v${{ inputs.version }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: java/v${{ inputs.version }}
           generate_release_notes: true

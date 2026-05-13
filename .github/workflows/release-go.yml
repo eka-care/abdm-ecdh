@@ -1,12 +1,17 @@
 name: Release — Go
 
 on:
-  push:
-    tags:
-      - 'go/v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 2.1.0)'
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
-  test:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,3 +23,7 @@ jobs:
       - name: Test
         working-directory: go
         run: go test ./...
+      - name: Create and push tag
+        run: |
+          git tag go/v${{ inputs.version }}
+          git push origin go/v${{ inputs.version }}
