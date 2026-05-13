@@ -22,7 +22,7 @@ jobs:
         run: echo "version=${GITHUB_REF#refs/tags/python/v}" >> $GITHUB_OUTPUT
       - name: Set version
         working-directory: python
-        run: hatch version ${{ steps.version.outputs.version }}
+        run: sed -i "s/^version = .*/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
       - name: Build
         working-directory: python
         run: hatch build
