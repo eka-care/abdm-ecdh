@@ -29,6 +29,7 @@ Both parties generate and exchange a random nonce. The sender and requester nonc
 |---|---|---|
 | Go | [`go/`](./go/) | `go get github.com/eka-care/abdm-ecdh/go` |
 | Python | [`python/`](./python/) | `pip install abdm-ecdh` |
+| Java | [`java/`](./java/) | `com.github.eka-care:abdm-ecdh:java-v1.0.0` (JitPack) |
 
 ## License
 
