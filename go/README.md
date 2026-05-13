@@ -7,10 +7,8 @@ Go library implementing the ABDM (Ayushman Bharat Digital Mission) ECDH encrypti
 ## Installation
 
 ```bash
-go get github.com/eka-care/abdm-ecdh/go
+go get github.com/eka-care/abdm-ecdh/go@v1.0.0
 ```
-
-> **Note:** Module path changed from `github.com/eka-care/abdm-ecdh` (v1.x) to `github.com/eka-care/abdm-ecdh/go` (v2.x).
 
 ## Usage
 
