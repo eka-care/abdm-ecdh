@@ -20,8 +20,12 @@ Thumbs.db
 # Dependency directories
 vendor/
 
+# Java
+java/target/
+python/dist/
+
 # Claude Code
 .claude/.idea/
 .idea/
-docs
+docs/
 .claude
