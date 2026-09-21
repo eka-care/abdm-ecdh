@@ -3,16 +3,14 @@ package abdmecdh
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hkdf"
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 // sanitizeBase64 replaces JSON unicode escapes (\u002B → +, \u002F → /, \u003D → =)
@@ -36,29 +34,33 @@ func computeSharedSecret(base64PrivateKey, base64PublicKey string) (string, erro
 	}
 	d := new(big.Int).SetBytes(privBytes)
 
-	var px, py *big.Int
+	pubBytes, err := base64.StdEncoding.DecodeString(base64PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("decode public key: %w", err)
+	}
 
-	// Detect key format by base64 length:
-	// 88 chars = raw EC uncompressed (65 bytes), otherwise = X.509/DER
-	if len(base64PublicKey) == 88 {
-		pubBytes, err := base64.StdEncoding.DecodeString(base64PublicKey)
-		if err != nil {
-			return "", fmt.Errorf("decode public key: %w", err)
-		}
+	// Detect key format from the decoded bytes: a raw uncompressed point (0x04 || X || Y)
+	// or an X.509 SubjectPublicKeyInfo.
+	var px, py *big.Int
+	if len(pubBytes) == pointSize && pubBytes[0] == 0x04 {
 		px, py, err = unmarshalUncompressed(pubBytes)
 		if err != nil {
 			return "", fmt.Errorf("unmarshal public key: %w", err)
 		}
 	} else {
-		px, py, err = parseX509PublicKey(base64PublicKey)
+		px, py, err = parseX509PublicKey(pubBytes)
 		if err != nil {
 			return "", fmt.Errorf("parse x509 public key: %w", err)
 		}
 	}
 
-	// Validate that the peer's public key is on the curve (prevents invalid curve attacks)
+	// Reject points off the curve (invalid-curve attack) and outside the prime-order
+	// subgroup (small-subgroup attack: the curve has cofactor 8).
 	if !isOnCurve(px, py) {
 		return "", errors.New("peer public key is not on the curve")
+	}
+	if !inPrimeSubgroup(px, py) {
+		return "", errors.New("peer public key is not in the prime-order subgroup")
 	}
 
 	// ECDH: S = d * Q
@@ -126,10 +128,9 @@ func deriveAESKey(sharedSecret string, salt []byte) ([]byte, error) {
 		return nil, fmt.Errorf("decode shared secret: %w", err)
 	}
 
-	hkdfReader := hkdf.New(sha256.New, ikm, salt, nil)
-	key := make([]byte, 32)
-	if _, err := io.ReadFull(hkdfReader, key); err != nil {
-		return nil, fmt.Errorf("HKDF expand: %w", err)
+	key, err := hkdf.Key(sha256.New, ikm, salt, "", 32)
+	if err != nil {
+		return nil, fmt.Errorf("HKDF: %w", err)
 	}
 	return key, nil
 }
@@ -160,13 +161,10 @@ func aesGCMDecrypt(key, iv, ciphertext []byte) ([]byte, error) {
 	return gcm.Open(nil, iv, ciphertext, nil)
 }
 
-// parseX509PublicKey parses a base64-encoded X.509/DER SubjectPublicKeyInfo
-// and extracts the uncompressed EC point.
-func parseX509PublicKey(base64Key string) (*big.Int, *big.Int, error) {
-	derBytes, err := base64.StdEncoding.DecodeString(base64Key)
-	if err != nil {
-		return nil, nil, fmt.Errorf("decode base64: %w", err)
-	}
+// parseX509PublicKey parses a DER X.509 SubjectPublicKeyInfo and extracts the
+// uncompressed EC point. The curve parameters are not read; the point is validated
+// against Curve25519 by the caller.
+func parseX509PublicKey(derBytes []byte) (*big.Int, *big.Int, error) {
 
 	// SubjectPublicKeyInfo ::= SEQUENCE {
 	//   algorithm AlgorithmIdentifier,

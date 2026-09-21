@@ -26,8 +26,7 @@ def test_requester_public_key_on_curve():
 def test_x509_marshal_parse_roundtrip():
     from abdm_ecdh.x509 import marshal_x509_public_key, parse_x509_public_key
     from abdm_ecdh.curve import CURVE_GX, CURVE_GY
-    b64 = base64.b64encode(marshal_x509_public_key(CURVE_GX, CURVE_GY)).decode()
-    x, y = parse_x509_public_key(b64)
+    x, y = parse_x509_public_key(marshal_x509_public_key(CURVE_GX, CURVE_GY))
     assert x == CURVE_GX
     assert y == CURVE_GY
 
@@ -192,3 +191,54 @@ def test_decrypt_with_known_vector():
         sender_public_key=SENDER_PUBLIC_KEY,
     )
     assert dec.decrypted_data == PLAINTEXT
+
+
+# --- peer key validation ---------------------------------------------------------
+
+def _low_order_point():
+    """(A/3 mod P, 0): on the curve but of order 2 (Montgomery u = 0)."""
+    from abdm_ecdh.curve import CURVE_P
+    return (486662 * pow(3, -1, CURVE_P)) % CURVE_P, 0
+
+
+def test_rejects_low_order_peer_key():
+    from abdm_ecdh import encrypt, generate_key_material
+    from abdm_ecdh.curve import is_on_curve, marshal_uncompressed
+    x, y = _low_order_point()
+    assert is_on_curve(x, y)
+    pub = base64.b64encode(marshal_uncompressed(x, y)).decode()
+    # enough iterations to hit both private-key parities (odd ones used to return a fixed secret)
+    for _ in range(32):
+        km = generate_key_material()
+        with pytest.raises(ValueError, match="prime-order subgroup"):
+            encrypt("x", km.nonce, km.nonce, km.private_key, pub)
+
+
+def test_rejects_non_canonical_coordinates():
+    from abdm_ecdh.curve import CURVE_GX, CURVE_GY, CURVE_P, is_on_curve
+    assert not is_on_curve(CURVE_GX + CURVE_P, CURVE_GY)
+
+
+def test_rejects_off_curve_key():
+    from abdm_ecdh import generate_key_material
+    from abdm_ecdh.utils import compute_shared_secret
+    km = generate_key_material()
+    raw = bytearray(base64.b64decode(km.public_key))
+    raw[64] ^= 1
+    with pytest.raises(ValueError, match="not on the curve"):
+        compute_shared_secret(km.private_key, base64.b64encode(bytes(raw)).decode())
+
+
+def test_truncated_x509_raises_value_error():
+    from abdm_ecdh.x509 import parse_x509_public_key
+    with pytest.raises(ValueError):
+        parse_x509_public_key(b"\x30\x82\x01")
+
+
+def test_encrypt_accepts_escaped_nonces():
+    from abdm_ecdh import encrypt, decrypt, generate_key_material
+    a, b = generate_key_material(), generate_key_material()
+    esc = lambda s: s.replace("+", r"\u002B").replace("/", r"\u002F").replace("=", r"\u003D")
+    enc = encrypt("hello", esc(a.nonce), esc(b.nonce), a.private_key, b.x509_public_key)
+    dec = decrypt(enc.encrypted_data, a.nonce, b.nonce, b.private_key, a.x509_public_key)
+    assert dec.decrypted_data == "hello"

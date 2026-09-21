@@ -29,3 +29,6 @@ python/dist/
 .idea/
 docs/
 .claude
+
+# Python
+__pycache__/

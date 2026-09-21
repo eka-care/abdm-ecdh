@@ -37,6 +37,14 @@ Both parties generate and exchange a random nonce. The sender and requester nonc
 | Python | [`python/`](./python/) | `pip install abdm-ecdh` |
 | Java | [`java/`](./java/) | `com.github.eka-care:abdm-ecdh:java/v1.0.0` (JitPack) |
 
+## Security notes
+
+- Peer public keys are rejected unless they lie on the curve **and** in its prime-order subgroup
+  (Curve25519 has cofactor 8, so low-order points exist and would otherwise give a predictable
+  shared secret). All three implementations enforce this.
+- The Go and Python scalar multiplication is not constant-time. Use a fresh key pair and nonce per
+  transfer, as ABDM intends; do not keep a long-lived private key behind these implementations.
+
 ## License
 
 MIT

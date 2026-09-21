@@ -16,8 +16,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go/go.mod
-          cache: true
-          cache-dependency-path: go/go.sum
+          cache: false # no third-party dependencies
+      - name: Format
+        working-directory: go
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: Vet
+        working-directory: go
+        run: go vet ./...
       - name: Test
         working-directory: go
         run: go test ./...

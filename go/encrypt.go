@@ -21,6 +21,10 @@ type EncryptionResponse struct {
 
 // Encrypt encrypts a string using ECDH + HKDF + AES-256-GCM.
 func Encrypt(req EncryptionRequest) (*EncryptionResponse, error) {
+	// Sanitize JSON unicode escapes, as Decrypt does
+	req.SenderNonce = sanitizeBase64(req.SenderNonce)
+	req.RequesterNonce = sanitizeBase64(req.RequesterNonce)
+
 	// Derive IV and salt from XOR of nonces
 	iv, salt, err := deriveIVAndSalt(req.SenderNonce, req.RequesterNonce)
 	if err != nil {

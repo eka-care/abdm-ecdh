@@ -1,5 +1,3 @@
 module github.com/eka-care/abdm-ecdh/go
 
 go 1.24.4
-
-require golang.org/x/crypto v0.48.0

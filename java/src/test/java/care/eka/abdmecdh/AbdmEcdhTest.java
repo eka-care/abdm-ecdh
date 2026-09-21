@@ -1,6 +1,7 @@
 package care.eka.abdmecdh;
 
 import org.junit.jupiter.api.Test;
+import java.math.BigInteger;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -106,5 +107,40 @@ class AbdmEcdhTest {
     void testXorBytesKnown() {
         byte[] result = AbdmEcdh.xorBytes(new byte[]{(byte) 0xFF, 0x00}, new byte[]{0x0F, (byte) 0xF0});
         assertArrayEquals(new byte[]{(byte) 0xF0, (byte) 0xF0}, result);
+    }
+
+    // (A/3 mod P, 0): on the curve but of order 2 (Montgomery u = 0).
+    static String lowOrderPublicKey() {
+        BigInteger p = new BigInteger("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFED", 16);
+        BigInteger x = BigInteger.valueOf(486662).multiply(BigInteger.valueOf(3).modInverse(p)).mod(p);
+        byte[] point = new byte[65];
+        point[0] = 0x04;
+        byte[] xb = x.toByteArray();
+        int n = Math.min(xb.length, 32);
+        System.arraycopy(xb, xb.length - n, point, 33 - n, n);
+        return Base64.getEncoder().encodeToString(point);
+    }
+
+    @Test
+    void testRejectsLowOrderPeerKey() {
+        String pub = lowOrderPublicKey();
+        for (int i = 0; i < 32; i++) {
+            KeyMaterial km = AbdmEcdh.generateKeyMaterial();
+            assertThrows(IllegalArgumentException.class,
+                () -> AbdmEcdh.encrypt("x", km.nonce(), km.nonce(), km.privateKey(), pub));
+        }
+    }
+
+    @Test
+    void testEncryptAcceptsEscapedNonces() {
+        KeyMaterial a = AbdmEcdh.generateKeyMaterial();
+        KeyMaterial b = AbdmEcdh.generateKeyMaterial();
+        java.util.function.UnaryOperator<String> esc = s ->
+            s.replace("+", "\\u002B").replace("/", "\\u002F").replace("=", "\\u003D");
+        EncryptionResponse enc = AbdmEcdh.encrypt("hello", esc.apply(a.nonce()), esc.apply(b.nonce()),
+            a.privateKey(), b.x509PublicKey());
+        DecryptionResponse dec = AbdmEcdh.decrypt(enc.encryptedData(), a.nonce(), b.nonce(),
+            b.privateKey(), a.x509PublicKey());
+        assertEquals("hello", dec.decryptedData());
     }
 }

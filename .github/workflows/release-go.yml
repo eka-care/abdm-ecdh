@@ -16,8 +16,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go/go.mod
-          cache: true
-          cache-dependency-path: go/go.sum
+          cache: false # no third-party dependencies
       - name: Test
         working-directory: go
         run: go test ./...

@@ -2,7 +2,6 @@ package abdmecdh
 
 import (
 	"encoding/asn1"
-	"encoding/base64"
 	"fmt"
 	"math/big"
 )
@@ -14,20 +13,21 @@ var (
 )
 
 // ECParameters matches BouncyCastle's explicit EC parameter encoding
-// ECParameters ::= SEQUENCE {
-//   version INTEGER,
-//   fieldID SEQUENCE { fieldType OID, prime INTEGER },
-//   curve SEQUENCE { a OCTET STRING, b OCTET STRING },
-//   base OCTET STRING,
-//   order INTEGER,
-//   cofactor INTEGER
-// }
+//
+//	ECParameters ::= SEQUENCE {
+//	  version INTEGER,
+//	  fieldID SEQUENCE { fieldType OID, prime INTEGER },
+//	  curve SEQUENCE { a OCTET STRING, b OCTET STRING },
+//	  base OCTET STRING,
+//	  order INTEGER,
+//	  cofactor INTEGER
+//	}
 type ecParameters struct {
-	Version int
-	FieldID fieldID
-	Curve   curveCoeffs
-	Base    []byte
-	Order   *big.Int
+	Version  int
+	FieldID  fieldID
+	Curve    curveCoeffs
+	Base     []byte
+	Order    *big.Int
 	Cofactor int
 }
 
@@ -104,13 +104,4 @@ func padToFieldSize(b []byte) []byte {
 	padded := make([]byte, fieldSize)
 	copy(padded[fieldSize-len(b):], b)
 	return padded
-}
-
-// marshalX509PublicKeyBase64 is a convenience wrapper.
-func marshalX509PublicKeyBase64(x, y *big.Int) (string, error) {
-	der, err := marshalX509PublicKey(x, y)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(der), nil
 }

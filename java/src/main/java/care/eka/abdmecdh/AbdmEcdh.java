@@ -78,6 +78,9 @@ public class AbdmEcdh {
         String senderPrivateKey,
         String requesterPublicKey
     ) {
+        senderNonce    = sanitizeBase64(senderNonce);
+        requesterNonce = sanitizeBase64(requesterNonce);
+
         byte[][] ivAndSalt  = deriveIvAndSalt(senderNonce, requesterNonce);
         byte[] sharedSecret = computeSharedSecret(senderPrivateKey, requesterPublicKey);
         byte[] aesKey       = deriveAesKey(sharedSecret, ivAndSalt[1]);
@@ -143,14 +146,19 @@ public class AbdmEcdh {
 
         BigInteger d = new BigInteger(Base64.getDecoder().decode(b64PrivateKey));
 
+        // Detect the format from the decoded bytes: raw uncompressed point or X.509 DER.
+        // decodePoint validates the point: on the curve and in the prime-order subgroup.
+        byte[] pub = Base64.getDecoder().decode(b64PublicKey);
         ECPoint point;
-        if (b64PublicKey.length() == 88) {
-            point = CURVE.decodePoint(Base64.getDecoder().decode(b64PublicKey));
-        } else {
-            point = parseX509PublicKey(Base64.getDecoder().decode(b64PublicKey));
+        try {
+            point = (pub.length == 65 && pub[0] == 0x04) ? CURVE.decodePoint(pub) : parseX509PublicKey(pub);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("invalid peer public key", e);
         }
 
         ECPoint sharedPoint = point.multiply(d).normalize();
+        if (sharedPoint.isInfinity())
+            throw new IllegalArgumentException("ECDH resulted in point at infinity");
         return toBytes32(sharedPoint.getAffineXCoord().toBigInteger());
     }
 
