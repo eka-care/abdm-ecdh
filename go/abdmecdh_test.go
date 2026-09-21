@@ -2,6 +2,8 @@ package abdmecdh
 
 import (
 	"encoding/base64"
+	"math/big"
+	"strings"
 	"testing"
 )
 
@@ -311,5 +313,90 @@ func BenchmarkRoundTrip(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+// lowOrderPoint is (A/3 mod P, 0): on the curve but of order 2 (Montgomery u = 0).
+func lowOrderPoint() (*big.Int, *big.Int) {
+	montA := big.NewInt(486662)
+	x := new(big.Int).Mul(montA, new(big.Int).ModInverse(big.NewInt(3), curveP))
+	return x.Mod(x, curveP), big.NewInt(0)
+}
+
+// A peer key outside the prime-order subgroup must be rejected with an error, never a panic
+// or a predictable shared secret. Enough iterations to hit every private-key parity.
+func TestRejectsLowOrderPeerKey(t *testing.T) {
+	x, y := lowOrderPoint()
+	if !isOnCurve(x, y) {
+		t.Fatal("test point should be on the curve")
+	}
+	pub := base64.StdEncoding.EncodeToString(marshalUncompressed(x, y))
+	for i := 0; i < 32; i++ {
+		km, err := GenerateKeyMaterial()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = Encrypt(EncryptionRequest{
+			StringToEncrypt: "x", SenderNonce: km.Nonce, RequesterNonce: km.Nonce,
+			SenderPrivateKey: km.PrivateKey, RequesterPublicKey: pub,
+		})
+		if err == nil || !strings.Contains(err.Error(), "prime-order subgroup") {
+			t.Fatalf("iteration %d: expected subgroup rejection, got %v", i, err)
+		}
+	}
+}
+
+func TestRejectsNonCanonicalCoordinates(t *testing.T) {
+	if isOnCurve(new(big.Int).Add(curveGx, curveP), curveGy) {
+		t.Fatal("x >= P must be rejected")
+	}
+}
+
+func TestRejectsOffCurveKey(t *testing.T) {
+	km, _ := GenerateKeyMaterial()
+	raw, _ := base64.StdEncoding.DecodeString(km.PublicKey)
+	raw[64] ^= 1
+	_, err := computeSharedSecret(km.PrivateKey, base64.StdEncoding.EncodeToString(raw))
+	if err == nil || !strings.Contains(err.Error(), "not on the curve") {
+		t.Fatalf("expected off-curve rejection, got %v", err)
+	}
+}
+
+// pointAdd must treat (nil, nil) as the identity in either position, including both.
+func TestPointAddIdentity(t *testing.T) {
+	if x, _ := pointAdd(nil, nil, nil, nil); x != nil {
+		t.Fatal("infinity + infinity must be infinity")
+	}
+	if x, y := pointAdd(curveGx, curveGy, nil, nil); x.Cmp(curveGx) != 0 || y.Cmp(curveGy) != 0 {
+		t.Fatal("G + infinity must be G")
+	}
+}
+
+func TestGeneratorInPrimeSubgroup(t *testing.T) {
+	if !inPrimeSubgroup(curveGx, curveGy) {
+		t.Fatal("G must be in the prime-order subgroup")
+	}
+}
+
+// Encrypt must accept JSON-escaped nonces, as Decrypt already does.
+func TestEncryptDecryptWithEscapedNonces(t *testing.T) {
+	a, _ := GenerateKeyMaterial()
+	b, _ := GenerateKeyMaterial()
+	esc := func(s string) string {
+		return strings.NewReplacer("+", `+`, "/", `/`, "=", `=`).Replace(s)
+	}
+	enc, err := Encrypt(EncryptionRequest{
+		StringToEncrypt: "hello", SenderNonce: esc(a.Nonce), RequesterNonce: esc(b.Nonce),
+		SenderPrivateKey: a.PrivateKey, RequesterPublicKey: b.X509PublicKey,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dec, err := Decrypt(DecryptionRequest{
+		EncryptedData: enc.EncryptedData, SenderNonce: a.Nonce, RequesterNonce: b.Nonce,
+		RequesterPrivateKey: b.PrivateKey, SenderPublicKey: a.X509PublicKey,
+	})
+	if err != nil || dec.DecryptedData != "hello" {
+		t.Fatalf("got %q, %v", dec, err)
 	}
 }

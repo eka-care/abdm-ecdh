@@ -9,10 +9,10 @@ import (
 
 // KeyMaterial holds the generated ECDH key pair and nonce.
 type KeyMaterial struct {
-	PrivateKey   string `json:"privateKey"`
-	PublicKey    string `json:"publicKey"`
+	PrivateKey    string `json:"privateKey"`
+	PublicKey     string `json:"publicKey"`
 	X509PublicKey string `json:"x509PublicKey"`
-	Nonce        string `json:"nonce"`
+	Nonce         string `json:"nonce"`
 }
 
 // GenerateKeyMaterial generates an ECDH key pair on Weierstrass Curve25519

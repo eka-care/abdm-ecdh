@@ -1,5 +1,4 @@
 from __future__ import annotations
-import base64
 from typing import Tuple
 
 from .curve import (
@@ -57,7 +56,9 @@ def _pad32(b: bytes) -> bytes:
 
 
 def _read_tlv(data: bytes, pos: int) -> Tuple[int, bytes, int]:
-    """Returns (tag, value_bytes, next_pos)."""
+    """Returns (tag, value_bytes, next_pos); raises ValueError on truncated DER."""
+    if pos + 2 > len(data):
+        raise ValueError("malformed DER: truncated header")
     tag = data[pos]
     pos += 1
     if data[pos] < 0x80:
@@ -66,6 +67,8 @@ def _read_tlv(data: bytes, pos: int) -> Tuple[int, bytes, int]:
         n      = data[pos] & 0x7F
         length = int.from_bytes(data[pos + 1:pos + 1 + n], 'big')
         pos   += 1 + n
+    if pos + length > len(data):
+        raise ValueError("malformed DER: length exceeds input")
     return tag, data[pos:pos + length], pos + length
 
 
@@ -87,9 +90,11 @@ def marshal_x509_public_key(x: int, y: int) -> bytes:
     return _enc_seq(algorithm, _tlv(0x03, b'\x00' + point))
 
 
-def parse_x509_public_key(base64_key: str) -> Tuple[int, int]:
-    der = base64.b64decode(base64_key)
+def parse_x509_public_key(der: bytes) -> Tuple[int, int]:
+    """Extract the EC point from DER SubjectPublicKeyInfo; the caller validates it."""
     _, spki_content, _ = _read_tlv(der, 0)          # outer SEQUENCE
     _, _, next_pos     = _read_tlv(spki_content, 0)  # skip AlgorithmIdentifier
     _, bs_value, _     = _read_tlv(spki_content, next_pos)  # BIT STRING
+    if not bs_value:
+        raise ValueError("malformed DER: empty BIT STRING")
     return unmarshal_uncompressed(bs_value[1:])       # skip unused-bits byte (0x00)

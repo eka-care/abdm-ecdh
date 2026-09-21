@@ -44,7 +44,23 @@ def point_double(p: Point) -> Point:
 
 
 def scalar_mult(k: int, point: Point) -> Point:
-    k      = k % CURVE_N
+    """k * point with k reduced mod N; only valid for points in the prime-order subgroup.
+
+    ponytail: not constant-time; fine for single-use keys, add an X25519 path if keys become long-lived.
+    """
+    return _mul_point(k % CURVE_N, point)
+
+
+def in_prime_subgroup(point: Point) -> bool:
+    """True when N * point is the point at infinity.
+
+    The curve has cofactor 8, so on-curve points of order 2, 4 or 8 exist; accepting one as a
+    peer key yields a predictable shared secret and leaks bits of our private key.
+    """
+    return _mul_point(CURVE_N, point) is None
+
+
+def _mul_point(k: int, point: Point) -> Point:
     result: Point = None
     addend = point
     for i in range(k.bit_length()):
@@ -78,6 +94,8 @@ def unmarshal_uncompressed(data: bytes) -> Tuple[int, int]:
 
 
 def is_on_curve(x: int, y: int) -> bool:
+    if not (0 <= x < CURVE_P and 0 <= y < CURVE_P):
+        return False
     p   = CURVE_P
     lhs = pow(y, 2, p)
     rhs = (pow(x, 3, p) + CURVE_A * x + CURVE_B) % p

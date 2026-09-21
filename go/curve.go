@@ -8,28 +8,28 @@ import (
 // Weierstrass Curve25519 parameters from BouncyCastle's CustomNamedCurves.
 // This is Curve25519 (2^255 - 19) in short Weierstrass form: y^2 = x^3 + Ax + B
 var (
-	curveP, _ = new(big.Int).SetString("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed", 16)
-	curveA, _ = new(big.Int).SetString("2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA984914A144", 16)
-	curveB, _ = new(big.Int).SetString("7B425ED097B425ED097B425ED097B425ED097B425ED097B4260B5E9C7710C864", 16)
-	curveN, _ = new(big.Int).SetString("1000000000000000000000000000000014DEF9DEA2F79CD65812631A5CF5D3ED", 16)
+	curveP, _  = new(big.Int).SetString("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed", 16)
+	curveA, _  = new(big.Int).SetString("2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA984914A144", 16)
+	curveB, _  = new(big.Int).SetString("7B425ED097B425ED097B425ED097B425ED097B425ED097B4260B5E9C7710C864", 16)
+	curveN, _  = new(big.Int).SetString("1000000000000000000000000000000014DEF9DEA2F79CD65812631A5CF5D3ED", 16)
 	curveGx, _ = new(big.Int).SetString("2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD245A", 16)
 	curveGy, _ = new(big.Int).SetString("20AE19A1B8A086B4E01EDD2C7748D14C923D4D7E6D7C61B229E9C5A27ECED3D9", 16)
 )
 
 const (
-	fieldSize  = 32 // bytes for a field element
-	pointSize  = 65 // 0x04 + 32 bytes X + 32 bytes Y
+	fieldSize = 32 // bytes for a field element
+	pointSize = 65 // 0x04 + 32 bytes X + 32 bytes Y
 )
 
 // pointAdd computes (x3, y3) = (x1, y1) + (x2, y2) on the Weierstrass curve.
 // Returns (nil, nil) for the point at infinity.
 func pointAdd(x1, y1, x2, y2 *big.Int) (*big.Int, *big.Int) {
-	// Handle identity cases
-	if x1 == nil && y1 == nil {
-		return new(big.Int).Set(x2), new(big.Int).Set(y2)
+	// Handle identity cases; either operand (or both) may be the point at infinity.
+	if x1 == nil {
+		return copyPoint(x2, y2)
 	}
-	if x2 == nil && y2 == nil {
-		return new(big.Int).Set(x1), new(big.Int).Set(y1)
+	if x2 == nil {
+		return copyPoint(x1, y1)
 	}
 
 	// If x1 == x2
@@ -67,6 +67,14 @@ func pointAdd(x1, y1, x2, y2 *big.Int) (*big.Int, *big.Int) {
 	y3.Mod(y3, p)
 
 	return x3, y3
+}
+
+// copyPoint returns a copy of (x, y), keeping the point at infinity as (nil, nil).
+func copyPoint(x, y *big.Int) (*big.Int, *big.Int) {
+	if x == nil {
+		return nil, nil
+	}
+	return new(big.Int).Set(x), new(big.Int).Set(y)
 }
 
 // pointDouble computes (x3, y3) = 2 * (x, y) on the Weierstrass curve.
@@ -113,11 +121,23 @@ func pointDouble(x, y *big.Int) (*big.Int, *big.Int) {
 	return x3, y3
 }
 
-// scalarMult computes k * (x, y) using double-and-add.
+// scalarMult computes k * (x, y) using double-and-add, with k reduced mod N.
+// Only valid for points in the prime-order subgroup (see inPrimeSubgroup).
+// ponytail: not constant-time; fine for single-use keys, add an X25519 path if keys become long-lived.
 func scalarMult(k *big.Int, x, y *big.Int) (*big.Int, *big.Int) {
-	// Reduce k mod N
-	k = new(big.Int).Mod(k, curveN)
+	return mulPoint(new(big.Int).Mod(k, curveN), x, y)
+}
 
+// inPrimeSubgroup reports whether N * (x, y) is the point at infinity. The curve has
+// cofactor 8, so on-curve points of order 2, 4 or 8 exist; accepting them as a peer key
+// yields a predictable shared secret and leaks bits of our private key.
+func inPrimeSubgroup(x, y *big.Int) bool {
+	rx, _ := mulPoint(curveN, x, y)
+	return rx == nil
+}
+
+// mulPoint computes k * (x, y) without reducing k.
+func mulPoint(k *big.Int, x, y *big.Int) (*big.Int, *big.Int) {
 	var rx, ry *big.Int // point at infinity
 
 	// Copy the point to avoid mutation
@@ -164,9 +184,13 @@ func unmarshalUncompressed(data []byte) (*big.Int, *big.Int, error) {
 	return x, y, nil
 }
 
-// isOnCurve checks if (x, y) satisfies y^2 = x^3 + Ax + B (mod P).
+// isOnCurve checks that x and y are canonical field elements (0 <= v < P) and that
+// (x, y) satisfies y^2 = x^3 + Ax + B (mod P).
 func isOnCurve(x, y *big.Int) bool {
 	p := curveP
+	if x.Sign() < 0 || y.Sign() < 0 || x.Cmp(p) >= 0 || y.Cmp(p) >= 0 {
+		return false
+	}
 
 	// y^2 mod p
 	lhs := new(big.Int).Mul(y, y)

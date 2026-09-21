@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-from .curve import FIELD_SIZE, scalar_mult, unmarshal_uncompressed, is_on_curve
+from .curve import FIELD_SIZE, POINT_SIZE, scalar_mult, unmarshal_uncompressed, is_on_curve, in_prime_subgroup
 from .x509 import parse_x509_public_key
 
 
@@ -42,14 +42,19 @@ def compute_shared_secret(b64_private_key: str, b64_public_key: str) -> str:
 
     d = int.from_bytes(base64.b64decode(b64_private_key), 'big')
 
-    # 88 base64 chars = 65 raw bytes = uncompressed EC point; otherwise X.509 DER
-    if len(b64_public_key) == 88:
-        px, py = unmarshal_uncompressed(base64.b64decode(b64_public_key))
+    # Detect the format from the decoded bytes: raw uncompressed point or X.509 DER.
+    pub = base64.b64decode(b64_public_key)
+    if len(pub) == POINT_SIZE and pub[0] == 0x04:
+        px, py = unmarshal_uncompressed(pub)
     else:
-        px, py = parse_x509_public_key(b64_public_key)
+        px, py = parse_x509_public_key(pub)
 
+    # Reject points off the curve (invalid-curve attack) and outside the prime-order
+    # subgroup (small-subgroup attack: the curve has cofactor 8).
     if not is_on_curve(px, py):
         raise ValueError("peer public key is not on the curve")
+    if not in_prime_subgroup((px, py)):
+        raise ValueError("peer public key is not in the prime-order subgroup")
 
     result = scalar_mult(d, (px, py))
     if result is None:

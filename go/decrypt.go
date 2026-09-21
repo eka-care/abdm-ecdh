@@ -7,11 +7,11 @@ import (
 
 // DecryptionRequest holds the parameters for decryption.
 type DecryptionRequest struct {
-	EncryptedData      string `json:"encryptedData"`
-	RequesterNonce     string `json:"requesterNonce"`
-	SenderNonce        string `json:"senderNonce"`
+	EncryptedData       string `json:"encryptedData"`
+	RequesterNonce      string `json:"requesterNonce"`
+	SenderNonce         string `json:"senderNonce"`
 	RequesterPrivateKey string `json:"requesterPrivateKey"`
-	SenderPublicKey    string `json:"senderPublicKey"`
+	SenderPublicKey     string `json:"senderPublicKey"`
 }
 
 // DecryptionResponse holds the decrypted output.
